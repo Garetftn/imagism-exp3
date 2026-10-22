@@ -9,7 +9,7 @@ import numpy as np
 import json
 import os
 
-sys.path.insert(0, os.getcwd())  # so `functions` is found when run from the repo folder
+#sys.path.insert(0, os.getcwd())  # so `functions` is found when run from the repo folder
 
 from scipy.special import softmax
 from scipy.stats import ttest_ind
@@ -18,9 +18,10 @@ from datasets import load_dataset
 import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
-
-from functions import generate_clip_embeddings
-from functions import get_dict_scores
+# from functions import generate_clip_embeddings
+# from functionsimport get_dict_scores
+from functions_new import generate_clip_embeddings
+from functions_new import get_dict_scores
 
 from transformers import CLIPProcessor, CLIPModel
 import torch
