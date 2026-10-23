@@ -1,0 +1,16 @@
+2026-10-22T23:20:13.192926+0200 INFO Loading CLIP model and processor: openai/clip-vit-base-patch32
+2026-10-22T23:20:14.132514+0200 INFO Using device: cpu
+2026-10-22T23:20:14.132754+0200 INFO Processing input texts.
+2026-10-22T23:20:14.191451+0200 INFO Generating embeddings.
+2026-10-22T23:36:14.604213+0200 INFO Loading CLIP model and processor: openai/clip-vit-base-patch32
+2026-10-22T23:36:15.534645+0200 INFO Using device: cpu
+2026-10-22T23:36:15.535059+0200 INFO Processing input texts.
+2026-10-22T23:36:15.629275+0200 INFO Generating embeddings.
+2026-10-23T02:11:47.450347+0200 INFO Loading CLIP model and processor: openai/clip-vit-base-patch32
+2026-10-23T02:11:48.696154+0200 INFO Using device: cpu
+2026-10-23T02:11:48.696380+0200 INFO Processing input texts.
+2026-10-23T02:11:48.738267+0200 INFO Generating embeddings.
+2026-10-23T02:12:20.782949+0200 INFO Loading CLIP model and processor: openai/clip-vit-base-patch32
+2026-10-23T02:12:22.160365+0200 INFO Using device: cpu
+2026-10-23T02:12:22.160714+0200 INFO Processing input texts.
+2026-10-23T02:12:22.295760+0200 INFO Generating embeddings.

@@ -25,7 +25,7 @@ from functions_new import get_dict_scores
 
 from transformers import CLIPProcessor, CLIPModel
 import torch
-
+import json
 model_name = "openai/clip-vit-base-patch32"
 
 # # correlations on the dictionary entries
@@ -60,92 +60,209 @@ def calculate_sparsity_ratio(embedding):
 # we can do the analysis on a poem basis or a sentence basis (default, sentences)
 analysis_basis = "sentences"
 print(f"Analysis basis: {analysis_basis}")
+from pathlib import Path
+
+# ---- change these per run ----
+RUN_NAME       = "tryrun"   # label for this try
+DATA_TAG       = "new"                # which version of the text: "orig" or "new" or "final"
+ANALYSIS_BASIS = "sentences"
+# ------------------------------
+print(Path.cwd())
+def make_paths(run_name, data_tag, basis, root = Path(__file__).resolve().parent.parent):
+    data_dir = root / "data"
+    dict_dir = root / "source" / "resources"
+
+    p = {
+        "imagist_data": data_dir / "some_imagists.json",
+        "love_data":    data_dir / ("new/modern_love_final.json"if DATA_TAG == "final" else "new/modern_love.json"),
+        "imagist_emb":  root / "data/derived/embeddings" / f"imagists_{basis}_{data_tag}.json",
+        "love_emb":     root / "data/derived/embeddings" / f"love_{basis}_{data_tag}.json",
+        "run_dir":      root / "results" / run_name,
+        
+    }
+
+    p["mrc_dict"]          = dict_dir / "mrc_psychol_dict.json"
+    p["sensorimotor_dict"] = dict_dir / "sensorimotor_norms_dict.json"
+    p["concreteness_dict"] = dict_dir / "concreteness_brysbaert.json"
+    p["lines_csv"] = p["run_dir"] / "lines.csv"
+    p["tests_csv"] = p["run_dir"] / "tests.csv"
+    p["run_info"]  = p["run_dir"] / "run_info.json"
+    p["figs"]      = p["run_dir"] / "figs"
+    for d in (p["imagist_emb"].parent, p["run_dir"], p["figs"]):
+        d.mkdir(parents=True, exist_ok=True)
+    return p
+
+paths = make_paths(RUN_NAME, DATA_TAG, ANALYSIS_BASIS)
 
 # %%
+# and we get the poetry from:
+# https://huggingface.co/datasets/merve/poetry
+def get_merve():
+    ds = load_dataset("merve/poetry")
 
-# open the imagists
-with open('data/some_imagists.json', 'r') as f:
-    imagists = json.load(f)
+    # make df
+    df = pd.DataFrame(ds['train'])
+    print(len(df))
+    df.head()
+    # # take only the modern
+    df_modern = df[df['age'] == 'Modern']
+    # take only the poems where type is Love
+    df_love = df_modern[df_modern['type'] == 'Love']
+    print('len df', len(df_love))
+    # remove any others that are in the imagist poets
+    df_love = df_love[~df_love['author'].isin(poets)]
+    print('len df after filtering authors', len(df_love))
 
-poems = []
-poem_texts = []
-for poet, works in imagists.items():
-    for work in works:
-        work['poet'] = poet  # Add poet's name to each poem
-        poems.append(work)
-        poem_texts.append(work['poem'])
+    # more cleaning needed from these cause they are scraped data
 
-# get len
-print('no of poems', len(poems))
-
-# clean it
-
-# use poems
-if analysis_basis == "poems":
-    units = poem_texts
-    units_clean = []
-    for poem in poems:
-        # we want to remove extra spaces
-        poem = poem['poem'].replace('\n', ' ').replace('  ', ' ')
-        # the stars we put to seperate the lines
-        poem = poem.strip().replace('*', '')
-        # remove leading and trailing spaces
-        poem = poem.strip()
-        units_clean.append(poem)
-# use sentences
-elif analysis_basis == "sentences":
-    units = [sentence for poem in poem_texts for sentence in poem.split('*')]
-    units_clean = []
-    for poem in poems:
         
-        # we want to remove extra spaces
-        poem = poem['poem'].replace('\n', ' ').replace('  ', ' ')
-        poem = poem.strip().split('*')
-        # remove leading and trailing spaces
-        poem = [sentence.strip() for sentence in poem]
-        units_clean.extend(poem)
 
-else:
-    raise ValueError("Invalid analysis_basis")
 
-# remove emtpy strings
-units_clean = [unit for unit in units_clean if unit != '']
-# remove sentences that are just a number
-units_clean = [unit for unit in units_clean if not unit.isdigit()]
-print(f'no of {analysis_basis.upper()}', len(units_clean))
+    # take poems
+    if analysis_basis == "poems":
+        units = df_love['content'].tolist()
+        units_clean_merve = []
+        for poem in units:
+            poem = poem.replace('\r', '').strip()
+            # split into lines first, then filter — do not replace \n before splitting
+            lines = poem.split('\n')
+            lines = [line.strip().replace('*', '').replace('  ', ' ') for line in lines]
+            lines = [line for line in lines if line and line != ' ']
+            lines = [line for line in lines if 'copyright' not in line.lower()]
+            lines = [line for line in lines if 'reprint' not in line.lower()]
+            if not lines:
+                continue
+            poem = ' '.join(lines).strip()
+            if len(poem) < 5:
+                continue
+            units_clean_merve.append(poem)
+        print('no. of poems', len(units_clean_merve))
 
-# get a list of the poets
-poets = list(imagists.keys())
-print('no of poets', len(poets))
+    # take sentences
+    elif analysis_basis == "sentences":
+        # get all the sentences, seperated by \n
+        units = df_love['content'].str.split('\n').explode().tolist()
+        # save the author and poem names
+        authors = df_love['author'].str.split('\n').explode().tolist()
+        print('authors', len(set(authors)))
+        poems_names = df_love['poem name'].str.split('\n').explode().tolist()
+        #print('poems', len(set(poems)))
+
+        # get the sentences
+        units_clean_merve = []
+        for line in units:
+            # we want to remove extra spaces
+            line = line.replace('\n', ' ').replace('  ', ' ')
+            line = line.strip().replace('*', '')
+            # remove leading and trailing spaces
+            line = line.strip()
+            units_clean_merve.append(line)
+        
+        # remove emtpy strings
+        units_clean_merve = [unit for unit in units_clean_merve if unit != '']
+        # remove sentences that are just a number
+        units_clean_merve = [unit for unit in units_clean_merve if not unit.isdigit()]
+        # remove empty strings
+        units_clean_merve = [unit for unit in units_clean_merve if unit != ' ']
+        units_clean_merve = [unit for unit in units_clean_merve if len(unit) > 5]
+        # remove \r from strings
+        units_clean_merve = [unit.replace('\r', '') for unit in units_clean_merve]
+        # remove all sentences containing "copyright"
+        units_clean_merve = [unit for unit in units_clean_merve if 'copyright' not in unit.lower()]
+        # remove all sentence containing "reprint" or "reprinted"
+        units_clean_merve = [unit for unit in units_clean_merve if 'reprint' not in unit.lower()]
+        print('no. of lines', len(units_clean_merve))
+
+    else:
+        raise ValueError("Invalid analysis_basis")
+    return units_clean_merve
+# %%
+import re
+
+def split_poem(raw: str, line_sep: str) -> list[str]:
+    """按数据源各自的行分隔符切成诗行（两组数据唯一不同的地方）"""
+    if line_sep == '*':
+        raw = raw.replace('\n', ' ')   # imagists 的行界由 * 标记
+    return raw.split(line_sep)
+
+def clean_line(s: str) -> str:
+    s = s.replace('\r', ' ').replace('\u00a0', ' ')
+    return re.sub(r'\s+', ' ', s).strip()
+
+def is_valid(s: str, min_chars: int = 0) -> bool:
+    if not re.search(r'[A-Za-z]', s):          # 空串、纯数字、纯标点
+        return False
+    low = s.lower()
+    if 'copyright' in low or 'reprint' in low:
+        return False
+    return len(s) >= min_chars
+
+def load_poetry(path, group, line_sep, analysis_basis="lines", min_chars=0):
+    with open(path, encoding='utf-8') as f:
+        data = json.load(f)
+
+    rows = []
+    poem_id = 0
+    for poet, works in data.items():
+        for w in works:
+            lines = [clean_line(l) for l in split_poem(w['poem'], line_sep)]
+            lines = [l for l in lines if is_valid(l, min_chars)]
+            if not lines:
+                continue
+            if analysis_basis == "poems":
+                rows.append(dict(group=group, poet=poet, title=w['title'],
+                                 poem_id=poem_id, line_no=0, text=' '.join(lines)))
+            elif analysis_basis == "lines":
+                for i, l in enumerate(lines):
+                    rows.append(dict(group=group, poet=poet, title=w['title'],
+                                     poem_id=poem_id, line_no=i, text=l))
+            else:
+                raise ValueError("analysis_basis must be 'lines' or 'poems'")
+            poem_id += 1
+    return pd.DataFrame(rows)
+
 
 # %%
 
 # now we get the embeddings for each sentence
 
 # check if embeddings are already saved
-if os.path.exists(f'data/embeddings/imagists_{analysis_basis}.json'):
-    with open(f'data/embeddings/imagists_{analysis_basis}.json', 'r') as f:
-        sentence_embeddings = np.array(json.load(f))
-    print('loaded')
-else:
-    sentence_embeddings = generate_clip_embeddings(units_clean)
-    with open(f'data/embeddings/imagists_{analysis_basis}.json', 'w') as f:
-        json.dump(sentence_embeddings.tolist(), f)
+def get_emb(genre,units_clean):
+    emb_path = paths[f"{genre}_emb"]
 
-norms = np.linalg.norm(sentence_embeddings, axis=1)
-entropies = [calculate_entropy(embedding) for embedding in sentence_embeddings]
-variances = np.var(sentence_embeddings, axis=1)
-sparsities = [calculate_sparsity_ratio(embedding) for embedding in sentence_embeddings]
+    if not os.path.exists(emb_path):
+        sentence_embeddings = generate_clip_embeddings(units_clean)
+        with open(emb_path, 'w') as f:
+            json.dump(sentence_embeddings.tolist(), f)
+        print(f'{genre}_embedding generated')
+    else:
+        with open(emb_path) as f:
+            sentence_embeddings = np.array(json.load(f))
+        print(f'{genre}_embedding loaded')
 
-# check if the scores are already saved
-if os.path.exists(f'data/measures/imagists_{analysis_basis}.json'):
-    df_sentences = pd.read_json(f'data/measures/imagists_{analysis_basis}.json')
-    print('loaded')
-else:
+    assert len(sentence_embeddings) == len(units_clean), "cached embeddings don't match the lines, delete the file"
+    return sentence_embeddings
+# %%
+df_imag = load_poetry(paths['imagist_data'], 'imagist', line_sep='*')
+df_love = load_poetry(paths['love_data'], 'modern_love', line_sep='\n') if DATA_TAG != "orig" else get_merve()
+df_all  = pd.concat([df_imag, df_love], ignore_index=True)
+
+units_clean = df_all[df_all['group']=='imagist']['text'].tolist()
+units_clean_merve = df_all[df_all['group']=='modern_love']['text'].tolist()
+
+sentence_embeddings_imagist = get_emb("imagist",units_clean)
+def score_df(units_clean,sentence_embeddings_imagist):
+    norms = np.linalg.norm(sentence_embeddings_imagist, axis=1)
+    entropies = [calculate_entropy(embedding) for embedding in sentence_embeddings_imagist]
+    variances = np.var(sentence_embeddings_imagist, axis=1)
+    sparsities = [calculate_sparsity_ratio(embedding) for embedding in sentence_embeddings_imagist]
+
+# check if the scores are already saved !no need to save the score, all scores will be recompute in every run
+
     # get the imageability scores
-    imag, imag_norm = get_dict_scores(units_clean, 'resources/mrc_psychol_dict.json', 'imag', 'lemma_', normalize_by_tokens=False)
-    vis, vis_norm = get_dict_scores(units_clean, 'resources/sensorimotor_norms_dict.json', 'Visual.mean', 'lemma_', normalize_by_tokens=False)
-    conc, conc_norm = get_dict_scores(units_clean, 'resources/concreteness_brysbaert.json', 'Conc.M', 'lemma_', normalize_by_tokens=False)
+    imag, imag_norm = get_dict_scores(units_clean, paths["mrc_dict"], 'imag', 'lemma_', normalize_by_tokens=False)
+    vis, vis_norm = get_dict_scores(units_clean, paths["sensorimotor_dict"] , 'Visual.mean', 'lemma_', normalize_by_tokens=False)
+    conc, conc_norm = get_dict_scores(units_clean, paths["concreteness_dict"], 'Conc.M', 'lemma_', normalize_by_tokens=False)
 
     # make a dataframe
     df_sentences = pd.DataFrame({'norm': norms, 'entropy': entropies, 'variance': variances, 'sparsity': sparsities})
@@ -157,8 +274,8 @@ else:
     df_sentences['concrete_norm'] = conc_norm
 
     # save the measures
-    df_sentences.to_json(f'data/measures/imagists_{analysis_basis}.json', orient='records')
-
+    return df_sentences
+df_sentences = score_df(units_clean,sentence_embeddings_imagist)
 # add the text
 df_sentences['text'] = units_clean
 # drop repeated lines (refrains such as "Zeus," or "In the dusk"); the paper's counts exclude them
@@ -166,125 +283,11 @@ df_sentences = df_sentences[~df_sentences['text'].duplicated()].reset_index(drop
 print('imagist lines after dropping duplicates', len(df_sentences))
 
 # %%
-# and we get the poetry from:
-# https://huggingface.co/datasets/merve/poetry
-ds = load_dataset("merve/poetry")
 
-# make df
-df = pd.DataFrame(ds['train'])
-print(len(df))
-df.head()
+        
+sentence_embeddings_love = get_emb("love",units_clean_merve)
 
-# %%
-# # take only the modern
-df_modern = df[df['age'] == 'Modern']
-# take only the poems where type is Love
-df_love = df_modern[df_modern['type'] == 'Love']
-print('len df', len(df_love))
-# remove any others that are in the imagist poets
-df_love = df_love[~df_love['author'].isin(poets)]
-print('len df after filtering authors', len(df_love))
-
-# more cleaning needed from these cause they are scraped data
-
-# take poems
-if analysis_basis == "poems":
-    units = df_love['content'].tolist()
-    units_clean_merve = []
-    for poem in units:
-        poem = poem.replace('\r', '').strip()
-        # split into lines first, then filter — do not replace \n before splitting
-        lines = poem.split('\n')
-        lines = [line.strip().replace('*', '').replace('  ', ' ') for line in lines]
-        lines = [line for line in lines if line and line != ' ']
-        lines = [line for line in lines if 'copyright' not in line.lower()]
-        lines = [line for line in lines if 'reprint' not in line.lower()]
-        if not lines:
-            continue
-        poem = ' '.join(lines).strip()
-        if len(poem) < 5:
-            continue
-        units_clean_merve.append(poem)
-    print('no. of poems', len(units_clean_merve))
-
-# take sentences
-elif analysis_basis == "sentences":
-    # get all the sentences, seperated by \n
-    units = df_love['content'].str.split('\n').explode().tolist()
-    # save the author and poem names
-    authors = df_love['author'].str.split('\n').explode().tolist()
-    print('authors', len(set(authors)))
-    poems_names = df_love['poem name'].str.split('\n').explode().tolist()
-    #print('poems', len(set(poems)))
-
-    # get the sentences
-    units_clean_merve = []
-    for line in units:
-        # we want to remove extra spaces
-        line = line.replace('\n', ' ').replace('  ', ' ')
-        line = line.strip().replace('*', '')
-        # remove leading and trailing spaces
-        line = line.strip()
-        units_clean_merve.append(line)
-    
-    # remove emtpy strings
-    units_clean_merve = [unit for unit in units_clean_merve if unit != '']
-    # remove sentences that are just a number
-    units_clean_merve = [unit for unit in units_clean_merve if not unit.isdigit()]
-    # remove empty strings
-    units_clean_merve = [unit for unit in units_clean_merve if unit != ' ']
-    units_clean_merve = [unit for unit in units_clean_merve if len(unit) > 5]
-    # remove \r from strings
-    units_clean_merve = [unit.replace('\r', '') for unit in units_clean_merve]
-    # remove all sentences containing "copyright"
-    units_clean_merve = [unit for unit in units_clean_merve if 'copyright' not in unit.lower()]
-    # remove all sentence containing "reprint" or "reprinted"
-    units_clean_merve = [unit for unit in units_clean_merve if 'reprint' not in unit.lower()]
-    print('no. of lines', len(units_clean_merve))
-
-else:
-    raise ValueError("Invalid analysis_basis")
-
-
-# %%
-tag = 'love'
-
-# get the embeddings
-if os.path.exists(f'data/embeddings/{tag}_{analysis_basis}.json'):
-    with open(f'data/embeddings/{tag}_{analysis_basis}.json', 'r') as f:
-        sentence_embeddings = np.array(json.load(f))
-    print('loaded')
-else:
-    sentence_embeddings = generate_clip_embeddings(units_clean_merve)
-    with open(f'data/embeddings/{tag}_{analysis_basis}.json', 'w') as f:
-        json.dump(sentence_embeddings.tolist(), f)
-
-norms_love = np.linalg.norm(sentence_embeddings, axis=1)
-entropies_love = [calculate_entropy(embedding) for embedding in sentence_embeddings]
-variances_love = np.var(sentence_embeddings, axis=1)
-sparsities_love = [calculate_sparsity_ratio(embedding) for embedding in sentence_embeddings]
-
-# check if the scores are already saved
-if os.path.exists(f'data/measures/{tag}_{analysis_basis}.json'):
-    df_sentences_love = pd.read_json(f'data/measures/{tag}_{analysis_basis}.json')
-    print('loaded')
-else:
-    # get the imageability scores
-    imag_love, imag_love_norm = get_dict_scores(units_clean_merve, 'resources/mrc_psychol_dict.json', 'imag', 'lemma_', normalize_by_tokens=False)
-    vis_love, vis_love_norm = get_dict_scores(units_clean_merve, 'resources/sensorimotor_norms_dict.json', 'Visual.mean', 'lemma_', normalize_by_tokens=False)
-    conc_love, conc_love_norm = get_dict_scores(units_clean_merve, 'resources/concreteness_brysbaert.json', 'Conc.M', 'lemma_', normalize_by_tokens=False)
-
-    # make a dataframe
-    df_sentences_love = pd.DataFrame({'norm': norms_love, 'entropy': entropies_love, 'variance': variances_love, 'sparsity': sparsities_love})
-    df_sentences_love['imag'] = imag_love
-    df_sentences_love['visual'] = vis_love
-    df_sentences_love['concrete'] = conc_love
-    df_sentences_love['imag_norm'] = imag_love_norm
-    df_sentences_love['visual_norm'] = vis_love_norm
-    df_sentences_love['concrete_norm'] = conc_love_norm
-
-    # save the measures
-    df_sentences_love.to_json(f'data/measures/{tag}_{analysis_basis}.json', orient='records')
+df_sentences_love = score_df(units_clean_merve,sentence_embeddings_love)
 
 # add the text
 df_sentences_love['text'] = units_clean_merve
