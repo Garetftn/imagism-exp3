@@ -9,8 +9,6 @@ import numpy as np
 import json
 import os
 
-#sys.path.insert(0, os.getcwd())  # so `functions` is found when run from the repo folder
-
 from scipy.special import softmax
 from scipy.stats import ttest_ind
 from scipy.stats import mannwhitneyu
@@ -36,13 +34,24 @@ model = CLIPModel.from_pretrained(model_name)
 
 # %%
 # entropy
-def calculate_entropy(embedding):
-    # Convert the embedding values to probabilities using softmax
-    probabilities = softmax(embedding)
-    # Calculate the entropy
-    entropy = -np.sum(probabilities * np.log(probabilities + 1e-9))  # Adding a small constant to avoid log(0)
+def calculate_entropy(embedding,e_formula):
+    if e_formula == 'orig':
+        # Convert the embedding values to probabilities using softmax
+        probabilities = softmax(embedding)
+         # Calculate the entropy
+        entropy = -np.sum(probabilities * np.log(probabilities + 1e-9))  # Adding a small constant to avoid log(0)
+    elif e_formula == 'paper':
+        eps = 1e-9
+        a = np.abs(np.asarray(embedding, dtype=float))
+        total = a.sum()
+        if total == 0:                      # all-zero vector: treat as uniform
+            p = np.full(len(a), 1 / len(a))
+        else:
+            p = a / total # p_i = |e_i| / sum |e_j|, sums to 1
+        entropy = -np.sum(p * np.log(p + eps)) # H(e) = -sum p_i log(p_i + eps)
+    else: raise ValueError(f"unknown e_formula {e_formula}")
+    
     return entropy
-
 
 # sparse ratio
 # Function to compute the ratio of L1 to L2 norms
@@ -66,6 +75,7 @@ from pathlib import Path
 RUN_NAME       = "tryrun"   # label for this try
 DATA_TAG       = "new"                # which version of the text: "orig" or "new" or "final"
 ANALYSIS_BASIS = "sentences"
+DESCRIPTION = "tryout"
 # ------------------------------
 print(Path.cwd())
 def make_paths(run_name, data_tag, basis, root = Path(__file__).resolve().parent.parent):
@@ -97,8 +107,9 @@ paths = make_paths(RUN_NAME, DATA_TAG, ANALYSIS_BASIS)
 # %%
 # and we get the poetry from:
 # https://huggingface.co/datasets/merve/poetry
-def get_merve():
+def get_merve(poets): #get poets from df_img: poets = df_imag['poet'].unique()
     ds = load_dataset("merve/poetry")
+
 
     # make df
     df = pd.DataFrame(ds['train'])
@@ -243,14 +254,9 @@ def get_emb(genre,units_clean):
     assert len(sentence_embeddings) == len(units_clean), "cached embeddings don't match the lines, delete the file"
     return sentence_embeddings
 # %%
-df_imag = load_poetry(paths['imagist_data'], 'imagist', line_sep='*')
-df_love = load_poetry(paths['love_data'], 'modern_love', line_sep='\n') if DATA_TAG != "orig" else get_merve()
-df_all  = pd.concat([df_imag, df_love], ignore_index=True)
 
-units_clean = df_all[df_all['group']=='imagist']['text'].tolist()
-units_clean_merve = df_all[df_all['group']=='modern_love']['text'].tolist()
 
-sentence_embeddings_imagist = get_emb("imagist",units_clean)
+"""
 def score_df(units_clean,sentence_embeddings_imagist):
     norms = np.linalg.norm(sentence_embeddings_imagist, axis=1)
     entropies = [calculate_entropy(embedding) for embedding in sentence_embeddings_imagist]
@@ -275,25 +281,41 @@ def score_df(units_clean,sentence_embeddings_imagist):
 
     # save the measures
     return df_sentences
-df_sentences = score_df(units_clean,sentence_embeddings_imagist)
-# add the text
-df_sentences['text'] = units_clean
-# drop repeated lines (refrains such as "Zeus," or "In the dusk"); the paper's counts exclude them
-df_sentences = df_sentences[~df_sentences['text'].duplicated()].reset_index(drop=True)
-print('imagist lines after dropping duplicates', len(df_sentences))
+"""
+# column name: (paths key, score key in the lexicon)
+DICTS = {
+    'imag':     ('mrc_dict',          'imag'),
+    'visual':   ('sensorimotor_dict', 'Visual.mean'),
+    'concrete': ('concreteness_dict', 'Conc.M'),
+}
 
-# %%
+def score_df(df, emb, paths):
+    """df: rows from load_poetry (group, poet, title, poem_id, line_no, text); emb: one vector per row."""
+    emb = np.asarray(emb)
+    out = df.reset_index(drop=True).copy()
 
-        
-sentence_embeddings_love = get_emb("love",units_clean_merve)
+    # embedding measures
+    out['norm']          = np.linalg.norm(emb, axis=1)
+    out['entropy_orig']  = [calculate_entropy(e, 'orig')  for e in emb]
+    out['entropy_paper'] = [calculate_entropy(e, 'paper') for e in emb]
+    out['variance']      = emb.var(axis=1)
+    out['sparsity']      = [calculate_sparsity_ratio(e) for e in emb]
 
-df_sentences_love = score_df(units_clean_merve,sentence_embeddings_love)
+    # dictionary measures
+    texts = out['text'].tolist()
+    for name, (path_key, score_key) in DICTS.items():
+        out[name], out[f'{name}_norm'] = get_dict_scores(
+            texts, paths[path_key], score_key, 'lemma_', normalize_by_tokens=False)
 
-# add the text
-df_sentences_love['text'] = units_clean_merve
-# drop repeated lines; the paper's count (1,126) excludes them
-df_sentences_love = df_sentences_love[~df_sentences_love['text'].duplicated()].reset_index(drop=True)
-print('love lines after dropping duplicates', len(df_sentences_love))
+    # drop repeated lines; the paper's counts exclude them
+    return out[~out['text'].duplicated()].reset_index(drop=True)
+
+df_imag = load_poetry(paths['imagist_data'], 'imagist', line_sep='*')
+df_love = load_poetry(paths['love_data'], 'modern_love', line_sep='\n') if DATA_TAG != "orig" else get_merve(df_imag['poet'].unique())
+
+df_sentences      = score_df(df_imag, get_emb('imagist', df_imag['text'].tolist()), paths)
+df_sentences_love = score_df(df_love, get_emb('love',    df_love['text'].tolist()), paths)
+pd.concat([df_sentences, df_sentences_love]).to_csv(paths['lines_csv'], index=False)
 
 # %% 
 # we get imageable and non imageable sentences as reference points
@@ -325,72 +347,60 @@ non_imag_metrics = df_sentences_all[df_sentences_all['text'] == non_imag_example
 
 # %%
 # make distributions of each group for each measure
-measures = ['norm', 'entropy', 'sparsity', 
+measures = ['norm', 'entropy_orig','entropy_paper', 'sparsity', 
             'imag_norm', 'visual_norm', 'concrete_norm']
 
-sns.set(style='whitegrid')
 
-plt.figure(figsize=(12, 5))
-
-for i, measure in enumerate(measures):
-    plt.subplot(2, 3, i+1)
-    sns.histplot(df_sentences[measure], label='Imagist', color='blue', kde=True, alpha=0.2, stat="density")#, shade=True)
-    sns.histplot(df_sentences_love[measure], label='Modern Love', color='red', kde=True, alpha=0.2, stat="density")#, shade=True)
-    # insert the lines for the examples
-    plt.axvline(imag_metrics[measure].values[0], color='blue', linestyle='--', label='Imageable')
-    plt.axvline(non_imag_metrics[measure].values[0], color='red', linestyle='--', label='Abstract')
-    plt.title(measure)
-plt.tight_layout()
-# add legend
-plt.legend()
-plt.show()
+def plot_distributions(df_a, df_b, measures, paths, examples=None, name="distributions.png"):
+    ncols = 3
+    nrows = -(-len(measures) // ncols)          # ceil
+    fig, axes = plt.subplots(nrows, ncols, figsize=(12, 3 * nrows), squeeze=False)
+    for ax, m in zip(axes.flat, measures):
+        sns.histplot(df_a[m], ax=ax, label='Imagist', color='blue', kde=True, alpha=0.2, stat='density')
+        sns.histplot(df_b[m], ax=ax, label='Modern Love', color='red', kde=True, alpha=0.2, stat='density')
+        for label, row, colour in (examples or []):
+            if len(row):                         # skip if the line isn't in this run
+                ax.axvline(row[m].values[0], color=colour, linestyle='--', label=label)
+        ax.set_title(m)
+    for ax in axes.flat[len(measures):]:         # hide unused panels
+        ax.set_visible(False)
+    handles, labels = axes.flat[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc='lower right')
+    fig.tight_layout()
+    out = paths['figs'] / name
+    fig.savefig(out, dpi=200)                    # save first, then show
+    plt.show()
+    return out
 
 # print len of both
 print('len imag', len(df_sentences))
 print('len love', len(df_sentences_love))
 # %%
 # do the t-test & mannwhitneyu test
-for measure in measures:
-    # make sure to drop any NaNs
-    df_sentences_nonan = df_sentences.dropna(subset=[measure])
-    df_sentences_love_nonan = df_sentences_love.dropna(subset=[measure])
-    t, p = ttest_ind(df_sentences_nonan[measure], df_sentences_love_nonan[measure])
+def cohens_d(a, b):
+    n1, n2 = len(a), len(b)
+    sp = np.sqrt(((n1-1)*a.var(ddof=1) + (n2-1)*b.var(ddof=1)) / (n1+n2-2))
+    return (a.mean() - b.mean()) / sp
 
-    # also make a mannwhitneyu test
-    t_m, p_m = mannwhitneyu(df_sentences_nonan[measure], df_sentences_love_nonan[measure])
+alpha = 0.05
+bonf = alpha / len(measures)
+rows = []
+for m in measures:
+    a = df_sentences[m].dropna()
+    b = df_sentences_love[m].dropna()
+    t, p = ttest_ind(a, b)
+    U, pU = mannwhitneyu(a, b)
+    rows.append(dict(measure=m, n_imagist=len(a), n_love=len(b),
+                     mean_imagist=a.mean(), sd_imagist=a.std(),
+                     mean_love=b.mean(), sd_love=b.std(),
+                     t=t, p_t=p, U=U, p_U=pU,
+                     cohens_d=cohens_d(a, b),
+                     auc=U / (len(a) * len(b)),   # P(Imagist > Love)
+                     bonferroni_alpha=bonf, sig_t=p < bonf, sig_U=pU < bonf))
+tests = pd.DataFrame(rows)
+tests.to_csv(paths['tests_csv'], index=False, float_format='%.6g')
+print(tests[['measure', 't', 'p_t', 'cohens_d', 'auc', 'sig_t']].to_string(index=False))
 
-    print(f'{measure}: t = {t:.2f}, p = {p:.2f}', f'mannwhitneyu: t = {t_m:.2f}, p = {p_m:.2f}')
-    print('--')
-
-# %%
-# do the same but with the bonferroni correction
-
-alpha = 0.05  # Original significance level
-n_tests = len(measures)  # Number of comparisons (tests)
-bonferroni_alpha = alpha / n_tests  # Adjusted significance level for Bonferroni correction
-
-for measure in measures:
-    # Make sure to drop any NaNs
-    df_sentences_nonan = df_sentences.dropna(subset=[measure])
-    df_sentences_love_nonan = df_sentences_love.dropna(subset=[measure])
-    # print the group sizes
-    print('group sizes', len(df_sentences_nonan), len(df_sentences_love_nonan))
-
-    # Perform T-test 
-    t, p = ttest_ind(df_sentences_nonan[measure], df_sentences_love_nonan[measure])
-    # print the group sizes
-    print('group sizes', len(df_sentences_nonan), len(df_sentences_love_nonan))
-    # Apply Bonferroni correction
-    is_significant = p < bonferroni_alpha
-    print(f'{measure}: t = {t:.2f}, p = {p:.2f}, significant: {is_significant}')
-
-    # also make a mannwhitneyu test
-    t_m, p_m = mannwhitneyu(df_sentences_nonan[measure], df_sentences_love_nonan[measure])
-    # Apply Bonferroni correction
-    is_significant = p_m < bonferroni_alpha
-    print(f'{measure}: mannwhitneyu: t = {t_m:.2f}, p = {p_m:.2f}, significant: {is_significant}')
-
-    print('--')
 
 # %%
 # get the numbers of means and stds per group
@@ -401,4 +411,38 @@ print(df_sentences_love.describe())
 
 # %%
 print('All done:)')
+
+import subprocess, datetime, platform, hashlib
+from importlib.metadata import version
+
+def sha(path):
+    return hashlib.sha256(open(path, 'rb').read()).hexdigest()
+
+root = Path(__file__).resolve().parent.parent
+git = lambda *a: subprocess.run(['git', *a], cwd=root, capture_output=True, text=True).stdout.strip()
+
+info = dict(
+    run_name=RUN_NAME, description=DESCRIPTION,   # add DESCRIPTION to the config block
+    date=datetime.datetime.now().isoformat(timespec='seconds'),
+    data_tag=DATA_TAG, analysis_basis=ANALYSIS_BASIS, dedup=True,
+    imagist_data=str(paths['imagist_data']), imagist_sha=sha(paths['imagist_data']),
+    love_data=str(paths['love_data']), love_sha=sha(paths['love_data']),
+    clip_model=model_name, entropy_methods=['orig', 'paper'],
+    git_commit=git('rev-parse', 'HEAD'), git_dirty=bool(git('status', '--porcelain')),
+    python=platform.python_version(),
+    versions={p: version(p) for p in ['numpy', 'pandas', 'scipy', 'torch',
+                                      'transformers', 'huggingface_hub', 'spacy']},
+    n_lines=dict(imagist=len(df_sentences), love=len(df_sentences_love)),
+)
+with open(paths['run_info'], 'w') as f:
+    json.dump(info, f, indent=2)
+
+idx = root / 'results' / 'runs.csv'
+row = {k: info[k] for k in ['run_name', 'date', 'description', 'data_tag', 'git_commit', 'git_dirty']}
+row |= {f'{c}_{r.measure}': r[c] for _, r in tests.iterrows() for c in ('t', 'cohens_d', 'auc')}
+pd.DataFrame([row]).to_csv(idx, mode='a', header=not idx.exists(), index=False)
 # %%
+## gird search
+corpus = ['orig','new','final']
+basis = ['poem','sentence']
+e_formula = ['orig','paper']
