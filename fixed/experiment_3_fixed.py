@@ -371,7 +371,10 @@ def plot_distributions(df_a, df_b, measures, paths, examples=None, name="distrib
     fig.savefig(out, dpi=200)                    # save first, then show
     plt.show()
     return out
-
+fig_path = plot_distributions(df_sentences, df_sentences_love, measures, paths,
+                              examples=[('Imageable', imag_metrics, 'blue'),
+                                        ('Abstract', non_imag_metrics, 'red')])
+print('figure saved to', fig_path)
 # print len of both
 print('len imag', len(df_sentences))
 print('len love', len(df_sentences_love))
