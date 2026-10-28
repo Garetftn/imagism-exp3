@@ -1,6 +1,6 @@
 # Report viewer
 
-`index.html` (in the repository root) shows `REPORT.md` as a web page. Every link in the report that points to a file in this repository becomes a citation:
+`index.html` (in `exp3_report/`; the root `index.html` redirects here) shows `REPORT.md` as a web page. Every link in the report that points to a file in this repository becomes a citation:
 
 * hover over it to see a snapshot of the cited lines, rows, page passage or figure;
 * click it to open the whole source in a panel beside the report, scrolled to the cited part;
@@ -10,7 +10,7 @@
 
 | Source | Write it as |
 |---|---|
-| code or text lines | `[label](source/experiment_3.py#L172)` or `#L171-L173` |
+| code or text lines | `[label](../experiment_3.py#L172)` (the paper's code, one folder up) or `#L171-L173` |
 | paper passage | `[label](paper/Encoding_Imagism.pdf#page=9 "exact words to highlight")` |
 | data rows | `[label](data/derived/imagist_lines.csv#L2-L6)` (line 1 is the header row) |
 | figure | `[label](figs/figure3_reproduced.png)` |
@@ -23,7 +23,7 @@ The page loads files with `fetch`, which browsers block for pages opened straigh
 
     python -m http.server
 
-and open http://localhost:8000.
+and open http://localhost:8000/exp3_report/.
 
 ## Settings
 

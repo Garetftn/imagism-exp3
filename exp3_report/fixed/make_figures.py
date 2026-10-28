@@ -1,8 +1,8 @@
 """Derived tables and figures for the Experiment III report, from the cached files only.
 
-Run from inside source/ (the paper's repo):
-    python ../fixed/make_figures.py
-Writes ../data/derived/*.csv and ../figs/*.png. Needs numpy, pandas, scipy, matplotlib.
+Run from the repository root (the paper's repo):
+    python exp3_report/fixed/make_figures.py
+Writes exp3_report/data/derived/*.csv and exp3_report/figs/*.png. Needs numpy, pandas, scipy, matplotlib.
 """
 import json
 import os
@@ -11,7 +11,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.stats import ttest_ind, mannwhitneyu, spearmanr, gaussian_kde
 
-OUT_DATA, OUT_FIGS = '../data/derived', '../figs'
+OUT_DATA, OUT_FIGS = 'exp3_report/data/derived', 'exp3_report/figs'
 os.makedirs(OUT_DATA, exist_ok=True)
 os.makedirs(OUT_FIGS, exist_ok=True)
 

@@ -8,6 +8,7 @@
     report: 'REPORT.md',
     repo: 'Garetftn/imagism-exp3', // used for the "Open on GitHub" links
     branch: 'main',
+    folder: 'exp3_report/', // where this page sits in the repository; citations are relative to it
     // PDFs are shown as page images, with word boxes for highlighting a quoted passage.
     // Made with: pdftoppm -r 120 -jpeg  and  pdftotext -bbox  (see paper/README.md)
     pdfs: {
@@ -46,7 +47,7 @@
   }
 
   function errorNote(c, err) {
-    const hint = c.path.startsWith('source/') ? ' Is the paper’s repository in source/?' : '';
+    const hint = c.path.startsWith('../') ? ' Is the paper’s code at the repository root?' : '';
     return note(`Could not load ${c.path} (${err.message}).${hint}`, true);
   }
 
@@ -99,7 +100,7 @@
   // the tag shown after a citation; code is split into the paper's code and yours
   function kindOf(c) {
     if (c.kind === 'code') {
-      if (c.path.startsWith('source/')) return ['original code', 'k-orig'];
+      if (c.path.startsWith('../')) return ['original code', 'k-orig'];
       return [c.path.startsWith('fixed/') ? 'fixed code' : 'code', 'k-fixed'];
     }
     return {
@@ -113,7 +114,8 @@
   }
 
   function githubUrl(c) {
-    const url = `https://github.com/${CONFIG.repo}/blob/${CONFIG.branch}/${c.path.split('/').map(encodeURIComponent).join('/')}`;
+    const path = new URL(c.path, `https://x/${CONFIG.folder}`).pathname.slice(1); // resolves ../
+    const url = `https://github.com/${CONFIG.repo}/blob/${CONFIG.branch}/${path.split('/').map(encodeURIComponent).join('/')}`;
     if (!c.from) return url;
     const plain = ['md', 'csv', 'tsv'].includes(c.ext) ? '?plain=1' : ''; // line anchors need the plain view
     return `${url}${plain}#L${c.from}${c.to > c.from ? `-L${c.to}` : ''}`;
@@ -519,7 +521,7 @@
     try {
       md = await load(CONFIG.report);
     } catch (err) {
-      main.replaceChildren(note(`Could not load ${CONFIG.report} (${err.message}). Open this page through a web server: run “python -m http.server” in the repository folder and go to http://localhost:8000.`, true));
+      main.replaceChildren(note(`Could not load ${CONFIG.report} (${err.message}). Open this page through a web server: run “python -m http.server” in the repository root and go to http://localhost:8000/exp3_report/.`, true));
       return;
     }
     main.innerHTML = marked.parse(md, { gfm: true }); // REPORT.md is your own text, so its HTML is trusted

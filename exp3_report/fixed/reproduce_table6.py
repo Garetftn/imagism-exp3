@@ -1,8 +1,8 @@
 """Reproduce Table 4 (poetry rows) and Table 6 of Bizzoni et al. (2026) from the cached
 Experiment III files, with and without removing duplicate lines.
 
-Run from inside source/ (the paper's repo):
-    python ../fixed/reproduce_table6.py
+Run from the repository root (the paper's repo):
+    python exp3_report/fixed/reproduce_table6.py
 Needs numpy, pandas, scipy. No CLIP or HuggingFace access needed.
 """
 import json

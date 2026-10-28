@@ -1,7 +1,7 @@
 """Experiment III claim checks on the cached files (no CLIP / HuggingFace needed).
 
-Run from inside source/ (the paper's repo):
-    python ../fixed/exp3_validity_checks.py
+Run from the repository root (the paper's repo):
+    python exp3_report/fixed/exp3_validity_checks.py
 Needs numpy, pandas, scipy, statsmodels.
 
 Sections:

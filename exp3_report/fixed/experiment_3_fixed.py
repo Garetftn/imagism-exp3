@@ -1,6 +1,6 @@
 # %%
 # Patched copy of experiment_3.py (issue 7: data does not match the paper).
-# Run from inside source/:  python ../fixed/experiment_3_fixed.py
+# Run from the repository root:  python exp3_report/fixed/experiment_3_fixed.py
 # Change vs. the original: duplicate lines are dropped from both corpora after the
 # cached measures are loaded. This reproduces the paper's line counts (1,195 / 1,126)
 # and the embedding rows of Table 6 exactly.
@@ -116,10 +116,10 @@ print(Path.cwd())   # 打印当前工作目录，便于确认从哪里运行
 # 返回一个字典 p，键为用途名称，值为 Path 对象；同时创建需要的文件夹。
 def make_paths(run_name, data_tag, basis, root = Path(__file__).resolve().parent.parent):
     data_dir = root / "data"                        # 诗歌原始数据
-    dict_dir = root / "source" / "resources"        # 论文仓库里的心理语言学词典
+    dict_dir = root.parent / "resources"            # 论文仓库里的心理语言学词典
 
     p = {
-        "imagist_data": data_dir / "some_imagists.json",
+        "imagist_data": root.parent / "data" / "some_imagists.json",
         # 爱情诗数据：DATA_TAG 为 "final" 时用 modern_love_final.json，否则用 modern_love.json
         # （注意这里读取的是全局变量 DATA_TAG，而不是参数 data_tag）
         "love_data":    data_dir / ("new/modern_love_final.json"if DATA_TAG == "final" else "new/modern_love.json"),
