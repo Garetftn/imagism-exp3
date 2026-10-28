@@ -10,10 +10,10 @@
 
 | Source | Write it as |
 |---|---|
-| code or text lines | `[label](../experiment_3.py#L172)` (the paper's code, one folder up) or `#L171-L173` |
+| code or text lines | `[label](../experiment_3.py#L172)` (code in the repository root, one folder up) or `#L171-L173` |
 | paper passage | `[label](paper/Encoding_Imagism.pdf#page=9 "exact words to highlight")` |
-| data rows | `[label](data/derived/imagist_lines.csv#L2-L6)` (line 1 is the header row) |
-| figure | `[label](figs/figure3_reproduced.png)` |
+| data rows | `[label](../data/measures/<run_id>_metrics.csv#L2-L6)` (line 1 is the header row) |
+| figure | `[label](../figs/<run_id>.png)` |
 
 The words in quotes after a paper link are matched against the text of that page, ignoring punctuation and line-break hyphens. If they aren't found, the preview says so.
 

@@ -23,7 +23,7 @@
   const KIND_BY_EXT = {
     py: 'code', r: 'code', js: 'code', sh: 'code',
     md: 'notes', txt: 'notes',
-    csv: 'data', tsv: 'data', json: 'data',
+    csv: 'data', tsv: 'data', json: 'data', jsonl: 'data',
     png: 'figure', jpg: 'figure', jpeg: 'figure', gif: 'figure', svg: 'figure', webp: 'figure',
     pdf: 'paper',
   };
@@ -100,8 +100,8 @@
   // the tag shown after a citation; code is split into the paper's code and yours
   function kindOf(c) {
     if (c.kind === 'code') {
-      if (c.path.startsWith('../')) return ['original code', 'k-orig'];
-      return [c.path.startsWith('fixed/') ? 'fixed code' : 'code', 'k-fixed'];
+      if (/^\.\.\/(experiment_3_replication_commented|run_grid)\.py$/.test(c.path)) return ['replication code', 'k-fixed'];
+      return [c.path.startsWith('../') ? 'original code' : 'code', 'k-orig'];
     }
     return {
       notes: ['notes', 'k-notes'], data: ['data', 'k-data'], figure: ['figure', 'k-figure'], paper: ['paper', 'k-paper'],
