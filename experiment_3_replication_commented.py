@@ -1,4 +1,4 @@
-# %%
+
 # =============================================================================
 # Experiment III replication: Imagist poems vs Modern Love poems
 # 实验三复现：意象派诗歌 vs 现代爱情诗
@@ -16,7 +16,16 @@
 #                                t 检验、Mann-Whitney U 检验、Cohen's d、AUC
 #     -> take_record()           append one JSON line per run to results/exp3_runs.jsonl
 #                                每次运行在 results/exp3_runs.jsonl 追加一行记录
+#Args for exp_start():
+#        imag_corpus: 'orig' or 'final'
+#                   
+#       love_corpus: 'orig' (merve/poetry) or 'final'
 #
+#       base_line:   'computed' or 'three' (different selecting methods)
+#       *base lines shown in original figure will always be there, as reference*
+#                    
+#       e_formula:   'orig' = upstream softmax entropy, 'paper' = |e|/sum|e| as in the paper
+# 
 # "L-numbers" in comments (e.g. L168) refer to the ORIGINAL experiment_3.py.
 # 注释中的 "L+数字"（如 L168）指的是原始 experiment_3.py 的行号。
 # =============================================================================
@@ -32,7 +41,7 @@ from scipy.stats import ttest_ind
 from scipy.stats import mannwhitneyu
 from datasets import load_dataset
 
-
+# =============================================================================
 def load_love(exclude_poets=(), start_id=0, group='modern_love'):
     """merve/poetry -> Modern Love lines, cleaned exactly like experiment_3.py (L168-230).
     Same columns as load_poetry: group, poet, title, poem_id, line_no, text
@@ -167,10 +176,8 @@ def load_poetry(path, group, line_sep):    # group: 即诗歌的分组 imagist, 
 # 相对路径：脚本需在包含 data/、resources/ 的目录下运行
 # Relative paths: run the script from the folder that contains data/ and resources/
 
+# =============================================================================
 
-
-
-# %%
 #df_all.to_csv(f'data/cleaned_{basis}_preview.csv', index=False, encoding='utf-8-sig')
 
 """为每一行诗产生 CLIP 向量，并计算 L2 范数、熵、方差和稀疏度等指标。
@@ -311,7 +318,6 @@ def add_dictionary_metrics(
     return out
 
 
-# %%
 # make distributions of each group for each measure
 # 为每个指标画出两组的分布
 
@@ -360,10 +366,10 @@ def plot_distributions(df_all, run_id, base_line,measures,settings=None):
         # keep lines with at least 3 matched words, so one word (e.g. "of") can't decide the extreme
         # 只保留至少匹配 3 个词的行，避免单个词（如 "of"）决定极值
         scored = scored[scored['n_matched'] >= 3]
-
-    # Add the most / least imageable line of this run / 加入本次运行意象性最高和最低的行
-    examples += [('Imageable (computed)', scored.loc[[scored['imag_norm'].idxmax()]], 'purple'),
-                     ('Abstract (computed)',  scored.loc[[scored['imag_norm'].idxmin()]], 'pink')]
+    if base_line != 'orig':
+        # Add the most / least imageable line of this run / 加入本次运行意象性最高和最低的行
+        examples += [('Imageable (computed)', scored.loc[[scored['imag_norm'].idxmax()]], 'purple'),
+                        ('Abstract (computed)',  scored.loc[[scored['imag_norm'].idxmin()]], 'pink')]
 
     # One panel per measure / 每个指标一个子图
     fig, axes = plt.subplots(2, 3, figsize=(12, 6))
@@ -391,7 +397,8 @@ def plot_distributions(df_all, run_id, base_line,measures,settings=None):
     fig.tight_layout(rect=(0, 0.06, 0.88, 1))
     os.makedirs('figs', exist_ok=True)
     out = f'figs/{run_id}.png'
-    fig.savefig(out, dpi=200)                         # save first, then show / 先保存再显示
+    fig.savefig(out, dpi=200)
+    plt.close(fig)                        
     #plt.show()
     return out
 
@@ -443,12 +450,12 @@ def load_corpora(imag_corpus,love_corpus):
     #print(len(df_all))
     #df_all = df_all.drop_duplicates(subset=['group','text'])
     #print(len(df_all))
-def get_metrics(run_id,e_formula,df_imag,df_love,imag_corpus,love_corpus):
+def get_metrics(metrics_key,e_formula,df_imag,df_love,imag_corpus,love_corpus):
     """Return all lines with all metrics, using caches where possible.
     返回带全部指标的所有诗行，尽量使用缓存。
 
     Caching / 缓存:
-        data/measures/<run_id>_metrics.csv  finished metrics table for this run;
+        data/measures/<metrics_key>_metrics.csv  finished metrics table for this run;
                                             if present it is returned immediately
                                             本次运行的完整指标表；存在则直接返回
         data/embeddings/love_<love_corpus>_embeddings.npy
@@ -466,7 +473,7 @@ def get_metrics(run_id,e_formula,df_imag,df_love,imag_corpus,love_corpus):
                     df_all，意象派行在前，爱情诗行在后
     """
     # Step 1: whole run already computed? / 第 1 步：本次运行是否已算过？
-    metrics_path = f"data/measures/{run_id}_metrics.csv"
+    metrics_path = f"data/measures/{metrics_key}_metrics.csv"
     if os.path.exists(metrics_path):
         print('scores loaded')
         return pd.read_csv(metrics_path)
@@ -494,8 +501,22 @@ def get_metrics(run_id,e_formula,df_imag,df_love,imag_corpus,love_corpus):
     df_all.to_csv(metrics_path, index=False, encoding="utf-8-sig")
     return df_all
 
-    # unreachable (after return); fig_path is not defined here / 在 return 之后，永远不会执行
-    print('figure saved to', fig_path)
+# =============================================================================  
+def pooled_d(a,b):
+    """
+    check Effect Sizes: Used as the standardizer in Cohen's d to measure the magnitude of a difference between groups.
+    """
+
+    n1, n2 = len(a), len(b)
+
+    pooled_sd = np.sqrt(
+        ((n1 - 1) * a.var(ddof=1)
+        + (n2 - 1) * b.var(ddof=1))
+        / (n1 + n2 - 2)
+    )
+
+    d = (a.mean() - b.mean()) / pooled_sd
+    return d
 
 def test(df_imag,df_love,measures):
     """Compare the two groups on each measure and print a results table.
@@ -518,6 +539,7 @@ def test(df_imag,df_love,measures):
 
     Returns / 返回: pd.DataFrame, one row per measure / 每个指标一行
     """
+ 
     # Bonferroni-corrected significance level / Bonferroni 校正后的显著性水平
     bonferroni_alpha = 0.05 / len(measures)
     rows = []
@@ -528,7 +550,7 @@ def test(df_imag,df_love,measures):
 
         t, p = ttest_ind(a, b)
         U, p_U = mannwhitneyu(a, b)
-        d = (a.mean() - b.mean()) / np.sqrt((a.var(ddof=1) + b.var(ddof=1)) / 2) #Cohen’s d / 效应量
+        d = pooled_d(a,b) #Cohen’s d / 效应量
 
         rows.append({
             'measure': measure,
@@ -536,23 +558,15 @@ def test(df_imag,df_love,measures):
             'mean_imag': a.mean(), 'mean_love': b.mean(),
             'sd_imag': a.std(), 'sd_love': b.std(),
             't': t, 'p': p, 'U': U, 'p_U': p_U,
-            'Cohens d': d, 'auc': U / (len(a) * len(b)),
+            'Cohens d': d, 'auc': U / (len(a) * len(b)), #Area Under the ROC Curve
             'sig_t': p < bonferroni_alpha, 'sig_U': p_U < bonferroni_alpha,
         })
 
     tests_df = pd.DataFrame(rows)
     print(tests_df.round(3).to_string(index=False))
     return tests_df
-# record tests:
-#t,p
-#t_m,p_m
-#bonferroni_alpha t_m p_m
-#
-# # extra test : Cohen’s d d = (a.mean() - b.mean()) / np.sqrt((a.var(ddof=1) + b.var(ddof=1)) / 2)
-# Probability of superiority U, p = mannwhitneyu(a, b)
-# auc = U / (len(a) * len(b))
-# 记录的检验：t 检验、Mann-Whitney U、Bonferroni 校正；额外：Cohen's d 和优势概率（AUC）
-def take_record(df_all,settings,tests_df,fig_path,run_id):
+
+def take_record(df_all,settings,tests_df,fig_path,run_id,metrics_key):
     """Append one JSON line describing this run to results/exp3_runs.jsonl.
     把描述本次运行的一行 JSON 追加到 results/exp3_runs.jsonl。
 
@@ -572,30 +586,6 @@ def take_record(df_all,settings,tests_df,fig_path,run_id):
 
     Returns / 返回: None
     """
-    # lines that have an MRC imageability score / 有 MRC 意象性分数的诗行
-    scored = df_all.dropna(subset=['imag_norm'])
-    df_imag = df_all[df_all['group'] == 'imagist']        # re-split: these now have the metrics / 重新拆分（现在带有指标）
-    df_love = df_all[df_all['group'] == 'modern_love']
-
-
-    record = {
-        'run_id': run_id,
-        'settings': settings,                                   # your grid dict / 本次运行的参数组合
-        'n_imag': len(df_imag), 'n_love': len(df_love),
-        'top10':    scored.nlargest(10, 'imag_norm').to_dict('records'),   # most imageable / 意象性最高的 10 行
-        'bottom10': scored.nsmallest(10, 'imag_norm').to_dict('records'),  # least imageable / 意象性最低的 10 行
-        'tests': tests_df.to_dict('records'),                                # list of {'measure','t','p','U','p_U'}
-        'figure': fig_path,
-        'scores_file': f'results/scores_{run_id}.csv',     # save df_all there, path only in json / 只记录路径
-    }
-
-    # default=float converts numpy numbers / bools that json can't serialise
-    # default=float 用于转换 json 无法直接序列化的 numpy 数值
-    with open('results/exp3_runs.jsonl', 'a', encoding='utf-8') as f:
-        f.write(json.dumps(record, default=float) + '\n')
-
-    #print(df_all.groupby('group')[['norm', 'imag_norm']].count())
-    #print(df_all['group'].value_counts())
 
 def exp_start(imag_corpus='orig', love_corpus='orig', base_line='computed', e_formula='orig'):
     """Run the whole Experiment III pipeline for one combination of settings.
@@ -617,13 +607,14 @@ def exp_start(imag_corpus='orig', love_corpus='orig', base_line='computed', e_fo
     # 设置字典，以及编码这些设置的 run_id（用于缓存和图片文件名）
     settings = dict(imag_corpus=imag_corpus, love_corpus=love_corpus,
                     base_line=base_line, e_formula=e_formula)
-    run_id = f"imag_{imag_corpus}_love_{love_corpus}_base_{base_line}_entropy_{e_formula}"
+    metrics_key = f"imag_{imag_corpus}_love_{love_corpus}_entropy_{e_formula}"  # names the metrics CSV
+    run_id = f"{metrics_key}_base_{base_line}"                                  # names figures and the record
 
     # Step 1: data / 第 1 步：读取数据
     df_imag, df_love = load_corpora(imag_corpus, love_corpus)
     # Step 2: metrics / 第 2 步：计算指标
     df_all = get_metrics(run_id,e_formula,df_imag,df_love,imag_corpus,love_corpus)
-
+    scored = df_all.dropna(subset=['imag_norm'])
     df_imag = df_all[df_all['group'] == 'imagist']        # re-split: these now have the metrics / 重新拆分（现在带有指标）
     df_love = df_all[df_all['group'] == 'modern_love']
     # The six measures of the paper's Figure 3 / Table 6 / 论文图 3 和表 6 中的六个指标
@@ -634,7 +625,22 @@ def exp_start(imag_corpus='orig', love_corpus='orig', base_line='computed', e_fo
     # Step 4: statistical tests / 第 4 步：统计检验
     tests_df = test(df_imag,df_love,measures)
     # Step 5: save a record of this run / 第 5 步：保存本次运行记录
-    return take_record(df_all,settings,tests_df,fig_path,run_id)
+    record = {
+        'run_id': run_id,
+        'settings': settings,                                   # your grid dict / 本次运行的参数组合
+        'n_imag': len(df_imag), 'n_love': len(df_love),
+        'top10':    scored.nlargest(10, 'imag_norm').to_dict('records'),   # most imageable / 意象性最高的 10 行
+        'bottom10': scored.nsmallest(10, 'imag_norm').to_dict('records'),  # least imageable / 意象性最低的 10 行
+        'tests': tests_df.to_dict('records'),                                # list of {'measure','t','p','U','p_U'}
+        'figure': fig_path,
+        'metrics_file':f"data/measures/{metrics_key}_metrics.csv",     # save df_all there, path only in json / 只记录路径
+        }
+    
+        # default=float converts numpy numbers / bools that json can't serialise
+        # default=float 用于转换 json 无法直接序列化的 numpy 数值
+    with open('results/exp3_runs.jsonl', 'a', encoding='utf-8') as f:
+        f.write(json.dumps(record, default=float) + '\n')
+    return record
 
 
 if __name__ == '__main__':
