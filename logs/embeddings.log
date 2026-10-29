@@ -100,3 +100,91 @@
 2026-10-27T18:29:27.360567+0100 INFO Using device: cpu
 2026-10-27T18:29:27.360859+0100 INFO Processing input texts.
 2026-10-27T18:29:27.449447+0100 INFO Generating embeddings.
+2026-10-29T00:04:18.928393+0100 INFO Loading CLIP model and processor: openai/clip-vit-base-patch32
+2026-10-29T00:04:20.834824+0100 INFO Using device: cpu
+2026-10-29T00:04:20.835384+0100 INFO Processing input texts.
+2026-10-29T00:04:20.890750+0100 INFO Generating embeddings.
+2026-10-29T00:04:40.952718+0100 INFO Loading CLIP model and processor: openai/clip-vit-base-patch32
+2026-10-29T00:04:42.346007+0100 INFO Using device: cpu
+2026-10-29T00:04:42.346562+0100 INFO Processing input texts.
+2026-10-29T00:04:42.396817+0100 INFO Generating embeddings.
+2026-10-29T00:04:57.504559+0100 INFO Loading CLIP model and processor: openai/clip-vit-base-patch32
+2026-10-29T00:04:58.955820+0100 INFO Using device: cpu
+2026-10-29T00:04:58.956568+0100 INFO Processing input texts.
+2026-10-29T00:04:59.105524+0100 INFO Generating embeddings.
+2026-10-29T00:06:03.077671+0100 INFO Loading CLIP model and processor: openai/clip-vit-base-patch32
+2026-10-29T00:06:05.746354+0100 INFO Using device: cpu
+2026-10-29T00:06:05.746964+0100 INFO Processing input texts.
+2026-10-29T00:06:05.900209+0100 INFO Generating embeddings.
+2026-10-29T00:06:45.152800+0100 INFO Loading CLIP model and processor: openai/clip-vit-base-patch32
+2026-10-29T00:06:46.341105+0100 INFO Using device: cpu
+2026-10-29T00:06:46.341376+0100 INFO Processing input texts.
+2026-10-29T00:06:46.372551+0100 INFO Generating embeddings.
+2026-10-29T00:06:55.557128+0100 INFO Loading CLIP model and processor: openai/clip-vit-base-patch32
+2026-10-29T00:06:56.691800+0100 INFO Using device: cpu
+2026-10-29T00:06:56.692135+0100 INFO Processing input texts.
+2026-10-29T00:06:56.716093+0100 INFO Generating embeddings.
+2026-10-29T00:07:03.998422+0100 INFO Loading CLIP model and processor: openai/clip-vit-base-patch32
+2026-10-29T00:07:05.259129+0100 INFO Using device: cpu
+2026-10-29T00:07:05.259438+0100 INFO Processing input texts.
+2026-10-29T00:07:05.338843+0100 INFO Generating embeddings.
+2026-10-29T00:08:06.072742+0100 INFO Loading CLIP model and processor: openai/clip-vit-base-patch32
+2026-10-29T00:08:07.672321+0100 INFO Using device: cpu
+2026-10-29T00:08:07.672833+0100 INFO Processing input texts.
+2026-10-29T00:08:07.807158+0100 INFO Generating embeddings.
+2026-10-29T00:09:29.979887+0100 INFO Loading CLIP model and processor: openai/clip-vit-base-patch32
+2026-10-29T00:09:32.055799+0100 INFO Using device: cpu
+2026-10-29T00:09:32.056002+0100 INFO Processing input texts.
+2026-10-29T00:09:32.198207+0100 INFO Generating embeddings.
+2026-10-29T00:12:56.237790+0100 INFO Loading CLIP model and processor: openai/clip-vit-base-patch32
+2026-10-29T00:12:57.936115+0100 INFO Using device: cpu
+2026-10-29T00:12:57.936683+0100 INFO Processing input texts.
+2026-10-29T00:12:57.998493+0100 INFO Generating embeddings.
+2026-10-29T00:13:14.492520+0100 INFO Loading CLIP model and processor: openai/clip-vit-base-patch32
+2026-10-29T00:13:15.940022+0100 INFO Using device: cpu
+2026-10-29T00:13:15.941945+0100 INFO Processing input texts.
+2026-10-29T00:13:15.982427+0100 INFO Generating embeddings.
+2026-10-29T00:13:32.434126+0100 INFO Loading CLIP model and processor: openai/clip-vit-base-patch32
+2026-10-29T00:13:33.677379+0100 INFO Using device: cpu
+2026-10-29T00:13:33.677917+0100 INFO Processing input texts.
+2026-10-29T00:13:33.748185+0100 INFO Generating embeddings.
+2026-10-29T00:13:44.579254+0100 INFO Loading CLIP model and processor: openai/clip-vit-base-patch32
+2026-10-29T00:13:45.847022+0100 INFO Using device: cpu
+2026-10-29T00:13:45.847303+0100 INFO Processing input texts.
+2026-10-29T00:13:45.865038+0100 INFO Generating embeddings.
+2026-10-29T00:13:54.105238+0100 INFO Loading CLIP model and processor: openai/clip-vit-base-patch32
+2026-10-29T00:13:55.270239+0100 INFO Using device: cpu
+2026-10-29T00:13:55.270575+0100 INFO Processing input texts.
+2026-10-29T00:13:55.301855+0100 INFO Generating embeddings.
+2026-10-29T00:14:03.792980+0100 INFO Loading CLIP model and processor: openai/clip-vit-base-patch32
+2026-10-29T00:14:05.216732+0100 INFO Using device: cpu
+2026-10-29T00:14:05.216994+0100 INFO Processing input texts.
+2026-10-29T00:14:05.235205+0100 INFO Generating embeddings.
+2026-10-29T00:14:12.041131+0100 INFO Loading CLIP model and processor: openai/clip-vit-base-patch32
+2026-10-29T00:14:13.482395+0100 INFO Using device: cpu
+2026-10-29T00:14:13.482631+0100 INFO Processing input texts.
+2026-10-29T00:14:13.571771+0100 INFO Generating embeddings.
+2026-10-29T00:17:46.859733+0100 INFO Loading CLIP model and processor: openai/clip-vit-base-patch32
+2026-10-29T00:17:48.465068+0100 INFO Using device: cpu
+2026-10-29T00:17:48.465336+0100 INFO Processing input texts.
+2026-10-29T00:17:48.490343+0100 INFO Generating embeddings.
+2026-10-29T00:18:06.018414+0100 INFO Loading CLIP model and processor: openai/clip-vit-base-patch32
+2026-10-29T00:18:07.680956+0100 INFO Using device: cpu
+2026-10-29T00:18:07.681589+0100 INFO Processing input texts.
+2026-10-29T00:18:07.736745+0100 INFO Generating embeddings.
+2026-10-29T00:18:26.532037+0100 INFO Loading CLIP model and processor: openai/clip-vit-base-patch32
+2026-10-29T00:18:27.995214+0100 INFO Using device: cpu
+2026-10-29T00:18:27.995764+0100 INFO Processing input texts.
+2026-10-29T00:18:28.053151+0100 INFO Generating embeddings.
+2026-10-29T00:22:21.653554+0100 INFO Loading CLIP model and processor: openai/clip-vit-base-patch32
+2026-10-29T00:22:23.088767+0100 INFO Using device: cpu
+2026-10-29T00:22:23.089112+0100 INFO Processing input texts.
+2026-10-29T00:22:23.163421+0100 INFO Generating embeddings.
+2026-10-29T00:25:37.807449+0100 INFO Loading CLIP model and processor: openai/clip-vit-base-patch32
+2026-10-29T00:25:39.541461+0100 INFO Using device: cpu
+2026-10-29T00:25:39.541818+0100 INFO Processing input texts.
+2026-10-29T00:25:39.565622+0100 INFO Generating embeddings.
+2026-10-29T01:20:40.380739+0100 INFO Loading CLIP model and processor: openai/clip-vit-base-patch32
+2026-10-29T01:20:42.545485+0100 INFO Using device: cpu
+2026-10-29T01:20:42.546269+0100 INFO Processing input texts.
+2026-10-29T01:20:42.639025+0100 INFO Generating embeddings.

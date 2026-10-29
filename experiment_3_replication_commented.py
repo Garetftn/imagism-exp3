@@ -498,6 +498,7 @@ def get_metrics(metrics_key,e_formula,df_imag,df_love,imag_corpus,love_corpus):
     print('computing the scores')
     df_all = pd.concat([df_imag, df_love], ignore_index=True)
     df_all = add_dictionary_metrics(df_all)
+    print(metrics_path)
     df_all.to_csv(metrics_path, index=False, encoding="utf-8-sig")
     return df_all
 
@@ -587,7 +588,7 @@ def take_record(df_all,settings,tests_df,fig_path,run_id,metrics_key):
     Returns / 返回: None
     """
 
-def exp_start(imag_corpus='orig', love_corpus='orig', base_line='computed', e_formula='orig'):
+def exp_start(imag_corpus='orig', love_corpus='orig', base_line='orig', e_formula='orig'):
     """Run the whole Experiment III pipeline for one combination of settings.
     用一组设置运行完整的实验三流程。
 
@@ -613,7 +614,7 @@ def exp_start(imag_corpus='orig', love_corpus='orig', base_line='computed', e_fo
     # Step 1: data / 第 1 步：读取数据
     df_imag, df_love = load_corpora(imag_corpus, love_corpus)
     # Step 2: metrics / 第 2 步：计算指标
-    df_all = get_metrics(run_id,e_formula,df_imag,df_love,imag_corpus,love_corpus)
+    df_all = get_metrics(metrics_key,e_formula,df_imag,df_love,imag_corpus,love_corpus)
     scored = df_all.dropna(subset=['imag_norm'])
     df_imag = df_all[df_all['group'] == 'imagist']        # re-split: these now have the metrics / 重新拆分（现在带有指标）
     df_love = df_all[df_all['group'] == 'modern_love']

@@ -72,7 +72,10 @@ def generate_clip_embeddings(
     # Generate embeddings
     logger.info("Generating embeddings.")
     with torch.no_grad():
-        embeddings = model.get_text_features(**inputs).cpu().numpy()  # making numpy array
+        out = model.get_text_features(**inputs)
+        if not torch.is_tensor(out):  # transformers >= 5 returns an output object
+            out = out.pooler_output
+        embeddings = out.cpu().numpy()
 
     # save embeddings if save path
     if save_name:
